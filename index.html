@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave_vortex | 浏览器端文件与文本加密</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #bb86fc;
+            --primary-variant-color: #3700b3;
+            --secondary-color: #03dac6;
+            --on-bg-color: #e0e0e0;
+            --on-surface-color: #ffffff;
+            --error-color: #cf6679;
+            --border-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--on-bg-color);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            color: var(--on-surface-color);
+            font-weight: 700;
+        }
+
+        header p {
+            color: var(--on-bg-color);
+            opacity: 0.8;
+        }
+
+        .card {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--on-bg-color);
+            font-size: 1rem;
+            font-weight: 500;
+            opacity: 0.7;
+            transition: all 0.2s ease-in-out;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-button.active {
+            opacity: 1;
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .input, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--on-bg-color);
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            text-align: center;
+        }
+        
+        .file-input-wrapper:hover {
+            background-color: #2a2a2a;
+            border-color: var(--primary-color);
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .file-name {
+            margin-top: 0.5rem;
+            font-style: italic;
+            opacity: 0.8;
+            word-break: break-all;
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            padding: 0.85rem;
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            font-size: 1.1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .button:hover {
+            background-color: #a966fa;
+        }
+
+        .button:disabled {
+            background-color: #333;
+            color: #777;
+            cursor: not-allowed;
+        }
+
+        .result-area {
+            margin-top: 2rem;
+            display: none;
+        }
+        
+        .result-area h3 {
+            margin-bottom: 1rem;
+        }
+
+        .result-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .result-controls .button {
+            width: auto;
+            flex-grow: 1;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            background-color: var(--secondary-color);
+        }
+        
+        .result-controls .button:hover {
+             background-color: #02c0ae;
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status-message.error {
+            background-color: var(--error-color);
+            color: var(--bg-color);
+        }
+
+        .status-message.info {
+            background-color: var(--primary-variant-color);
+            color: var(--on-surface-color);
+        }
+
+        .loader {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto 0;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Wave-Vortex</h1>
+            <p>基于 Rust + WebAssembly 的高性能端到端加密工具</p>
+        </header>
+
+        <div id="loading-screen">
+            <p style="text-align: center;">正在加载加密模块...</p>
+            <div class="loader" style="display: block;"></div>
+        </div>
+
+        <div class="card" id="main-content" style="display: none;">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="encrypt">加密</button>
+                <button class="tab-button" data-tab="decrypt">解密</button>
+            </div>
+
+            <!-- 加密面板 -->
+            <div id="encrypt-panel" class="panel active">
+                <div class="form-group">
+                    <label for="encrypt-password">密码</label>
+                    <input type="password" id="encrypt-password" class="input" placeholder="输入一个强密码">
+                </div>
+                <div class="form-group">
+                    <label for="encrypt-text">输入文本 (可选)</label>
+                    <textarea id="encrypt-text" placeholder="在此处粘贴文本进行加密..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>或选择一个文件</label>
+                    <div class="file-input-wrapper">
+                        <span>点击或拖拽文件到此处</span>
+                        <input type="file" id="encrypt-file">
+                    </div>
+                    <div class="file-name" id="encrypt-file-name"></div>
+                </div>
+                <button id="encrypt-button" class="button">加密</button>
+
+                <div class="loader" id="encrypt-loader"></div>
+                <div class="status-message" id="encrypt-status"></div>
+
+                <div class="result-area" id="encrypt-result">
+                    <h3>加密结果</h3>
+                    <textarea id="encrypt-result-text" readonly></textarea>
+                    <div class="result-controls">
+                        <button id="copy-button" class="button">复制到剪贴板</button>
+                        <a id="download-link" class="button" style="display:none; text-align: center; text-decoration: none;">下载文件</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 解密面板 -->
+            <div id="decrypt-panel" class="panel">
+                <div class="form-group">
+                    <label for="decrypt-password">密码</label>
+                    <input type="password" id="decrypt-password" class="input" placeholder="输入解密密码">
+                </div>
+                <div class="form-group">
+                    <label for="decrypt-text">输入文本 (Base64)</label>
+                    <textarea id="decrypt-text" placeholder="在此处粘贴Base64编码的密文..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>或选择一个加密文件</label>
+                    <div class="file-input-wrapper">
+                        <span>点击或拖拽文件到此处</span>
+                        <input type="file" id="decrypt-file">
+                    </div>
+                     <div class="file-name" id="decrypt-file-name"></div>
+                </div>
+                <button id="decrypt-button" class="button">解密</button>
+
+                <div class="loader" id="decrypt-loader"></div>
+                <div class="status-message" id="decrypt-status"></div>
+
+                <div class="result-area" id="decrypt-result">
+                    <h3>解密结果</h3>
+                    <textarea id="decrypt-result-text" readonly></textarea>
+                    <div class="result-controls">
+                        <a id="decrypt-download-link" class="button" style="display:none; text-align: center; text-decoration: none;">下载解密后的文件</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入 WASM 模块
+        import init, { wasm_encrypt_stream, wasm_decrypt_stream } from './pkg/wave_vortex.js';
+       
+        async function main() {
+            try {
+                await init();
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            } catch (err) {
+                console.error("WASM 初始化失败:", err);
+                document.getElementById('loading-screen').innerHTML = '<p style="text-align:center; color: var(--error-color);">加载加密模块失败。请检查控制台获取详情。</p>';
+                return;
+            }
+
+            // --- DOM 元素获取 ---
+            const tabs = document.querySelectorAll('.tab-button');
+            const panels = document.querySelectorAll('.panel');
+            
+            const encryptBtn = document.getElementById('encrypt-button');
+            const decryptBtn = document.getElementById('decrypt-button');
+
+            const encryptFileInput = document.getElementById('encrypt-file');
+            const decryptFileInput = document.getElementById('decrypt-file');
+            
+            const encryptFileName = document.getElementById('encrypt-file-name');
+            const decryptFileName = document.getElementById('decrypt-file-name');
+
+            // --- 辅助函数 ---
+            const textEncoder = new TextEncoder();
+            const textDecoder = new TextDecoder();
+
+            function showStatus(id, message, isError = false) {
+                const el = document.getElementById(id);
+                el.textContent = message;
+                el.className = `status-message ${isError ? 'error' : 'info'}`;
+                el.style.display = 'block';
+            }
+
+            function hideStatus(id) {
+                document.getElementById(id).style.display = 'none';
+            }
+
+            function showLoader(id) {
+                document.getElementById(id).style.display = 'block';
+            }
+            
+            function hideLoader(id) {
+                document.getElementById(id).style.display = 'none';
+            }
+
+            // --- 选项卡逻辑 ---
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panels.forEach(p => p.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    document.getElementById(`${tab.dataset.tab}-panel`).classList.add('active');
+                });
+            });
+            
+            // --- 文件名显示逻辑 ---
+            encryptFileInput.addEventListener('change', () => {
+                encryptFileName.textContent = encryptFileInput.files.length > 0 ? encryptFileInput.files[0].name : '';
+            });
+
+            decryptFileInput.addEventListener('change', () => {
+                decryptFileName.textContent = decryptFileInput.files.length > 0 ? decryptFileInput.files[0].name : '';
+            });
+
+            // --- 加密逻辑 ---
+            encryptBtn.addEventListener('click', async () => {
+                const password = document.getElementById('encrypt-password').value;
+                const text = document.getElementById('encrypt-text').value;
+                const file = encryptFileInput.files[0];
+
+                if (!password) {
+                    showStatus('encrypt-status', '错误: 密码不能为空。', true);
+                    return;
+                }
+                if (!text && !file) {
+                    showStatus('encrypt-status', '错误: 请提供文本或选择一个文件进行加密。', true);
+                    return;
+                }
+
+                hideStatus('encrypt-status');
+                showLoader('encrypt-loader');
+                encryptBtn.disabled = true;
+                document.getElementById('encrypt-result').style.display = 'none';
+
+                try {
+                    const passwordBytes = textEncoder.encode(password);
+                    let resultBytes;
+
+                    if (file) {
+                        // 文件加密
+                        const dataBytes = new Uint8Array(await file.arrayBuffer());
+                        resultBytes = wasm_encrypt_stream(dataBytes, passwordBytes);
+                        
+                        const blob = new Blob([resultBytes], { type: 'application/octet-stream' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        const downloadLink = document.getElementById('download-link');
+                        downloadLink.href = url;
+                        downloadLink.download = `${file.name}.encrypted`;
+                        downloadLink.style.display = 'block';
+                        document.getElementById('encrypt-result-text').value = `文件 "${file.name}" 已加密。请点击下方按钮下载。`;
+
+                    } else {
+                        // 文本加密
+                        const dataBytes = textEncoder.encode(text);
+                        resultBytes = wasm_encrypt_stream(dataBytes, passwordBytes);
+                        
+                        // 将二进制结果转换为 Base64 以便显示
+                        const base64String = btoa(String.fromCharCode.apply(null, resultBytes));
+                        document.getElementById('encrypt-result-text').value = base64String;
+                        document.getElementById('download-link').style.display = 'none';
+                    }
+
+                    document.getElementById('encrypt-result').style.display = 'block';
+
+                } catch (e) {
+                    console.error('加密失败:', e);
+                    showStatus('encrypt-status', `加密失败: ${e.message || e}`, true);
+                } finally {
+                    hideLoader('encrypt-loader');
+                    encryptBtn.disabled = false;
+                }
+            });
+
+            // --- 解密逻辑 ---
+            decryptBtn.addEventListener('click', async () => {
+                const password = document.getElementById('decrypt-password').value;
+                const text = document.getElementById('decrypt-text').value;
+                const file = decryptFileInput.files[0];
+
+                if (!password) {
+                    showStatus('decrypt-status', '错误: 密码不能为空。', true);
+                    return;
+                }
+                if (!text && !file) {
+                    showStatus('decrypt-status', '错误: 请提供Base64文本或选择一个文件进行解密。', true);
+                    return;
+                }
+
+                hideStatus('decrypt-status');
+                showLoader('decrypt-loader');
+                decryptBtn.disabled = true;
+                document.getElementById('decrypt-result').style.display = 'none';
+
+                try {
+                    const passwordBytes = textEncoder.encode(password);
+                    let dataBytes;
+
+                    if (file) {
+                        // 文件解密
+                        dataBytes = new Uint8Array(await file.arrayBuffer());
+                    } else {
+                        // 文本解密 (Base64 -> Uint8Array)
+                        const binaryString = atob(text);
+                        dataBytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            dataBytes[i] = binaryString.charCodeAt(i);
+                        }
+                    }
+
+                    const resultBytes = wasm_decrypt_stream(dataBytes, passwordBytes);
+                    
+                    if (file) {
+                        const blob = new Blob([resultBytes]); // 类型让浏览器自动判断
+                        const url = URL.createObjectURL(blob);
+                        
+                        const downloadLink = document.getElementById('decrypt-download-link');
+                        downloadLink.href = url;
+                        // 尝试移除 .encrypted 后缀
+                        const originalName = file.name.endsWith('.encrypted') ? file.name.slice(0, -10) : `decrypted_${file.name}`;
+                        downloadLink.download = originalName;
+                        downloadLink.style.display = 'block';
+                        document.getElementById('decrypt-result-text').value = `文件 "${file.name}" 已解密。请点击下方按钮下载。`;
+
+                    } else {
+                        // 文本解密结果
+                        const decryptedText = textDecoder.decode(resultBytes);
+                        document.getElementById('decrypt-result-text').value = decryptedText;
+                        document.getElementById('decrypt-download-link').style.display = 'none';
+                    }
+
+                    document.getElementById('decrypt-result').style.display = 'block';
+
+                } catch (e) {
+                    console.error('解密失败:', e);
+                    showStatus('decrypt-status', `解密失败。密码是否正确？(${e.message || e})`, true);
+                } finally {
+                    hideLoader('decrypt-loader');
+                    decryptBtn.disabled = false;
+                }
+            });
+            
+            // --- 复制到剪贴板 ---
+            document.getElementById('copy-button').addEventListener('click', () => {
+                const resultText = document.getElementById('encrypt-result-text');
+                navigator.clipboard.writeText(resultText.value).then(() => {
+                    showStatus('encrypt-status', '已复制到剪贴板!', false);
+                    setTimeout(() => hideStatus('encrypt-status'), 2000);
+                }, (err) => {
+                    showStatus('encrypt-status', `复制失败: ${err}`, true);
+                });
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>

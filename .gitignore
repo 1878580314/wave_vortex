@@ -1,0 +1,8 @@
+/target/
+/Cargo.lock
+/dist/
+/www/pkg/
+.vscode/
+.idea/
+*.swp
+*.swo

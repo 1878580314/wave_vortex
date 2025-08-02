@@ -1,0 +1,31 @@
+[package]
+name = "wave_vortex"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+statrs = "0.17.0"
+wasm-bindgen = "0.2"
+clap = { version = "4.4", features = ["derive"] }
+pbkdf2 = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+once_cell = "1.21.3"
+array-init = "2.1.0"
+getrandom = "0.2"
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+criterion = { version = "0.7.0", features = ["html_reports"] }
+
+[[bench]]
+name = "performance"   
+harness = false   
+
+[features]
+default = []
+constant_time = []
