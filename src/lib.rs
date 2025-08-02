@@ -274,7 +274,7 @@ fn unpack_state(ct: &[u8; 36]) -> [u16; CELLS] {
     }
     cells
 }
-// ========================= 优化后的核心实现 =========================
+
 // --- 1. CipherCtx: 轮密钥缓存 ---
 #[derive(Clone)]
 struct RoundKey {
@@ -304,7 +304,7 @@ impl CipherCtx {
         Self { rounds }
     }
 }
-// --- 2. T-Tables for fused S-box + MDS (encrypt only) ---
+// --- 2. T-Tables for S-box + MDS ---
 static T0: Lazy<[[u16; 4]; 512]> = Lazy::new(|| {
     let mut t = [[0u16; 4]; 512];
     for x in 0..512 {
@@ -357,7 +357,7 @@ static T3: Lazy<[[u16; 4]; 512]> = Lazy::new(|| {
     }
     t
 });
-// --- 2. 查表版 MDS (decrypt uses original) ---
+// --- 2. 查表版 MDS ---
 static MUL_1: Lazy<[u16; 512]> = Lazy::new(|| {
     let mut t = [0u16; 512];
     for x in 0..512 {
@@ -438,7 +438,7 @@ fn apply_inv_mds_lookup(cells: &[u16; CELLS]) -> [u16; CELLS] {
     }
     out
 }
-// --- Fused Sub + MDS using T-Tables ---
+
 #[inline]
 fn apply_sub_mds_fused(cells: &[u16; CELLS]) -> [u16; CELLS] {
     let mut out = [0u16; CELLS];
@@ -564,7 +564,7 @@ fn inv_subcells_bitslice_32(cells: &mut [u16; CELLS]) {
         cells[lane] = v;
     }
 }
-// --- 4. 优化后的轮函数 (encrypt uses fused T-Tables) ---
+// --- 4. 优化后的轮函数 ---
 #[inline]
 fn encrypt_round_ctx(cells: &mut [u16; CELLS], rk: &RoundKey) {
     for i in 0..CELLS {
@@ -636,7 +636,7 @@ pub fn decrypt_block_ctx(ctx: &CipherCtx, ct: &[u8; 36]) -> [u8; 32] {
     }
     pt
 }
-// --- 公共 API (旧接口的兼容层) ---
+// --- 公共 API ---
 /// 加密一个32字节的明文块。
 pub fn encrypt_block(pt: &[u8; 32], master_key: &[u8; 32]) -> [u8; 36] {
     let ctx = CipherCtx::new(master_key);
@@ -647,20 +647,14 @@ pub fn decrypt_block(ct: &[u8; 36], master_key: &[u8; 32]) -> [u8; 32] {
     let ctx = CipherCtx::new(master_key);
     decrypt_block_ctx(&ctx, ct)
 }
+
 // --- 高级文件加密 API ---
-/// Derives a 32-byte key from a password and salt using PBKDF2-HMAC-SHA256.
-///
-/// This function is intentionally slow to protect against brute-force attacks.
 pub fn derive_key_from_password(password: &[u8], salt: &[u8]) -> [u8; 32] {
     let mut key = [0u8; 32];
     pbkdf2_hmac::<Sha256>(password, salt, PBKDF2_ROUNDS, &mut key);
     key
 }
-/// Encrypts a stream using a pre-computed `CipherCtx`.
-///
-/// This version is more efficient for multiple streams using the same key,
-/// as it avoids re-deriving the key and re-building the context.
-/// It writes a randomly generated IV to the beginning of the output stream.
+
 pub fn encrypt_stream_with_ctx(
     reader: &mut impl Read,
     writer: &mut impl Write,
@@ -716,10 +710,7 @@ pub fn encrypt_stream_with_ctx(
     }
     Ok(())
 }
-/// Encrypts a stream using a password.
-///
-/// This function handles salt generation, key derivation, and encryption.
-/// The output format is: `[16-byte salt][32-byte IV][ciphertext...]`
+
 pub fn encrypt_stream(
     reader: &mut impl Read,
     writer: &mut impl Write,
@@ -732,9 +723,7 @@ pub fn encrypt_stream(
     let ctx = CipherCtx::new(&key);
     encrypt_stream_with_ctx(reader, writer, &ctx)
 }
-/// Decrypts a stream using a pre-computed `CipherCtx`.
-///
-/// This function reads the IV from the beginning of the input stream and then decrypts the rest.
+
 pub fn decrypt_stream_with_ctx(
     reader: &mut impl Read,
     writer: &mut impl Write,
@@ -768,7 +757,7 @@ pub fn decrypt_stream_with_ctx(
     }
 
     if is_first_block {
-        return Ok(()); // Stream was empty or only contained an IV.
+        return Ok(()); 
     }
     // Process the final block for padding
     let last_block = temp_decrypted_block;
@@ -794,10 +783,7 @@ pub fn decrypt_stream_with_ctx(
 
     Ok(())
 }
-/// Decrypts a stream using a password.
-///
-/// This function reads the salt, derives the key, and then decrypts the stream.
-/// It expects the input format: `[16-byte salt][32-byte IV][ciphertext...]`
+
 pub fn decrypt_stream(
     reader: &mut impl Read,
     writer: &mut impl Write,
@@ -810,7 +796,7 @@ pub fn decrypt_stream(
 
     decrypt_stream_with_ctx(reader, writer, &ctx)
 }
-// --- Wasm 绑定部分 (保持不变) ---
+// --- Wasm 绑定部分 ---
 #[wasm_bindgen]
 pub fn wasm_encrypt_block(plaintext: &[u8], key: &[u8]) -> Result<Vec<u8>, JsValue> {
     if plaintext.len() != 32 || key.len() != 32 {
